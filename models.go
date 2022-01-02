@@ -135,3 +135,14 @@ func (f Floats2) GetAddedValue() float64 {
 }
 
 //#endregion
+
+//#region Player
+
+type Player struct {
+	userID string
+
+	currentHealth int
+	maxHealth     int
+}
+
+//#endregion

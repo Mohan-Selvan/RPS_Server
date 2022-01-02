@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/heroiclabs/nakama-common/runtime"
 )
 
 func BoolToString(value bool) string {
@@ -17,6 +19,14 @@ func StringToBool(value string) bool {
 
 	return response
 }
+
+//#region Error
+
+func PrintError(logger runtime.Logger, err error, message string) {
+	logger.WithField("err", err).Error(message)
+}
+
+//#endregion
 
 //#region Encoding Decoding
 
