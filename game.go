@@ -9,11 +9,13 @@ import (
 
 func HandleGameState_INPROGRESS(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) {
 
+	mState, _ := state.(*MatchState)
+
 	for _, message := range messages {
 
 		switch message.GetOpCode() {
 		case c2s_PlayerMove:
-			HandlePlayerMove(message.GetUserId(), ctx, logger, db, nk, dispatcher, tick, state, messages)
+			mState.HandlePlayerMove(message.GetUserId(), ctx, logger, db, nk, dispatcher, tick, state, messages)
 			break
 
 		default:
@@ -23,8 +25,18 @@ func HandleGameState_INPROGRESS(ctx context.Context, logger runtime.Logger, db *
 	}
 }
 
-func HandlePlayerMove(userID string, ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) {
+func (mState *MatchState) HandlePlayerMove(userID string, ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) {
 
-	//Calculate Attack here.
+	//Update Player selection here.
 	logger.Info("Player move made here by %v", userID)
+
+}
+
+func (mState *MatchState) ProcessAttack(userID string, ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) {
+
+	logger.Info("Player move made here by %v", userID)
+
+	//Claculate Attack State.
+	mState.lastAttackState = *mState.currentAttackState
+	mState.currentAttackState = mState.NewAttackStateObject(ctx, logger, db, nk, dispatcher, tick, state)
 }

@@ -34,6 +34,14 @@ type MatchState struct {
 
 	players   PlayersMap
 	gameState GameState
+
+	futureActions *FutureActions
+
+	turnCounter           int
+	timerPerTurnInSeconds int
+
+	currentAttackState *AttackState
+	lastAttackState    AttackState
 }
 
 type Match struct {
@@ -51,6 +59,11 @@ func (m *Match) MatchInit(ctx context.Context, logger runtime.Logger, db *sql.DB
 		presences: make(map[string]runtime.Presence),
 		gameState: GAME_STATE_LOBBY,
 		players:   make(PlayersMap),
+
+		futureActions: &FutureActions{},
+
+		timerPerTurnInSeconds: TIME_PER_TURN,
+		turnCounter:           1,
 	}
 
 	tickRate := 1
@@ -74,9 +87,9 @@ func (m *Match) MatchJoin(ctx context.Context, logger runtime.Logger, db *sql.DB
 		mState.presences[p.GetUserId()] = p
 	}
 
-	//if len(presences) == 4 {
-	InitializeMatch(ctx, logger, db, nk, dispatcher, tick, state)
-	//}
+	if len(presences) == MAX_NUMBER_OF_PLAYERS {
+		InitializeMatch(ctx, logger, db, nk, dispatcher, tick, state)
+	}
 
 	return mState
 }
@@ -122,4 +135,29 @@ func (m *Match) MatchTerminate(ctx context.Context, logger runtime.Logger, db *s
 
 func (m *Match) MatchSignal(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, data string) (interface{}, string) {
 	return state, "signal received: " + data
+}
+
+func (m *MatchState) AddFutureAction(f FutureAction) {
+	m.futureActions.Enqueue(f)
+}
+
+func (mState *MatchState) NewAttackStateObject(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}) *AttackState {
+
+	logger.Info("Initializing New AttackState")
+
+	attackState := AttackState{
+		time_pending: mState.timerPerTurnInSeconds,
+	}
+
+	return &attackState
+}
+
+func (mState *MatchState) DispatchMessage(opcode int64, encodedMessage string, ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}) {
+
+	logger.Info("Dispatching message : %s", encodedMessage)
+
+	err := dispatcher.BroadcastMessage(opcode, []byte(encodedMessage), nil, nil, true)
+	if err != nil {
+		PrintError(logger, err, "Error dispatching message")
+	}
 }

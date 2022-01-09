@@ -12,7 +12,13 @@ var (
 var (
 	c2s_PlayerReady   int64 = 0
 	c2s_PlayerUnReady int64 = 1
-	c2s_PlayerMove    int64 = 2
+
+	//InGame
+	c2s_PlayerMove int64 = 2
+)
+
+var (
+	s2c_InitMatch int64 = 1
 )
 
 type GameState int

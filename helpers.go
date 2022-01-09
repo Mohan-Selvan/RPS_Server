@@ -1,33 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"strconv"
-
-	"github.com/heroiclabs/nakama-common/runtime"
+	"math/rand"
 )
 
-func BoolToString(value bool) string {
-	return strconv.FormatBool(value)
+type HelperFunctions struct {
 }
 
-func StringToBool(value string) bool {
-	response, err := strconv.ParseBool(value)
-	if err != nil {
-		fmt.Printf("Error Parsing Bool, Input : %v", value)
-	}
+var Helpers HelperFunctions
 
-	return response
+func (h HelperFunctions) GetRandomInt(minInclusive int, maxInclusive int) int {
+	return rand.Intn(maxInclusive-minInclusive) + minInclusive
 }
-
-//#region Error
-
-func PrintError(logger runtime.Logger, err error, message string) {
-	logger.WithField("err", err).Error(message)
-}
-
-//#endregion
-
-//#region Encoding Decoding
-
-//#endregion

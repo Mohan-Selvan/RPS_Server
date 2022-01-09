@@ -25,7 +25,7 @@ func HandleGameState_LOBBY(ctx context.Context, logger runtime.Logger, db *sql.D
 }
 
 func HandlePlayerReady(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) {
-
+	logger.Error("HandlePlayerReady : Not implemented")
 }
 
 func InitializeMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}) {
@@ -45,6 +45,16 @@ func InitializeMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 	for _, player := range mState.players {
 		logger.Info("Player in match : %s", player.userID)
 	}
+
+	mState.currentAttackState = mState.NewAttackStateObject(ctx, logger, db, nk, dispatcher, tick, state)
+	mState.lastAttackState = *mState.currentAttackState
+
+	encodedMessage := InitMatchMessage{
+		players:     mState.players,
+		attackState: mState.currentAttackState,
+	}.GetEncodedObject()
+
+	mState.DispatchMessage(s2c_InitMatch, encodedMessage, ctx, logger, db, nk, dispatcher, tick, state)
 
 	mState.ChangeGameState(GAME_STATE_IN_PROGRESS, logger)
 }

@@ -145,4 +145,22 @@ type Player struct {
 	maxHealth     int
 }
 
+func (o *Player) MarshalJSON() ([]byte, error) {
+
+	return json.Marshal(map[string]interface{}{
+		"user_id": o.userID,
+		"curr_hp": IntToString(o.currentHealth),
+		"max_hp":  IntToString(o.maxHealth),
+	})
+}
+
+func (o *Player) GetEncodedObject() string {
+	encoded, err := json.Marshal(o)
+
+	if err != nil {
+		fmt.Println("Error encoding Player")
+	}
+	return string(encoded)
+}
+
 //#endregion
