@@ -49,6 +49,17 @@ func (o *PlayersMap) ContainsPlayer(p *Player) bool {
 	return false
 }
 
+func (o *PlayersMap) GetPlayer(userID string) *Player {
+
+	for _, value := range *o {
+		if value.userID == userID {
+			return value
+		}
+	}
+
+	return nil
+}
+
 func (o *PlayersMap) HasEmptySlot() bool {
 
 	for i := 1; i <= MAX_NUMBER_OF_PLAYERS; i++ {
@@ -69,7 +80,7 @@ func (o *PlayersMap) GetEmptySlotID() int {
 	for i := 1; i <= maxNumberOfPlayer; i++ {
 		_, isEmpty := (*o)[i]
 
-		if isEmpty {
+		if !isEmpty {
 			return i
 		}
 	}

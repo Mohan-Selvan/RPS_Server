@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strconv"
 
 	"github.com/heroiclabs/nakama-common/runtime"
@@ -37,8 +38,14 @@ type MatchState struct {
 
 	futureActions *FutureActions
 
+	tick                  int
 	turnCounter           int
 	timerPerTurnInSeconds int
+
+	currentTurn  int
+	previousTurn int
+
+	matchStartTime int64
 
 	currentAttackState *AttackState
 	lastAttackState    AttackState
@@ -111,6 +118,19 @@ func (m *Match) MatchLoop(ctx context.Context, logger runtime.Logger, db *sql.DB
 	//	logger.Info("Presence %v named %v", presence.GetUserId(), presence.GetUsername())
 	//}
 
+	//Checking if Match is set to TERMINATE
+	if mState.gameState == GAME_STATE_END {
+		logger.Info("Ending game : ")
+		//Handle Game end here.
+		//For example, Storing match data to database for future reference.
+
+		return nil
+	}
+
+	mState.ProcessMatchTimers(ctx, logger, db, nk, dispatcher, tick, state, messages)
+
+	mState.ProcessFutureActions(ctx, logger, db, nk, dispatcher, tick, state, messages)
+
 	switch mState.gameState {
 
 	case GAME_STATE_LOBBY:
@@ -137,16 +157,24 @@ func (m *Match) MatchSignal(ctx context.Context, logger runtime.Logger, db *sql.
 	return state, "signal received: " + data
 }
 
-func (m *MatchState) AddFutureAction(f FutureAction) {
+func (m *MatchState) TerminateMatch(logger runtime.Logger) {
+	m.ChangeGameState(GAME_STATE_END, logger)
+	fmt.Println("End match set..")
+}
+
+func (m *MatchState) AddFutureAction(f *FutureAction) {
 	m.futureActions.Enqueue(f)
 }
 
-func (mState *MatchState) NewAttackStateObject(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}) *AttackState {
+func (mState *MatchState) NewAttackStateObject(attacker *Player, ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}) *AttackState {
 
 	logger.Info("Initializing New AttackState")
 
 	attackState := AttackState{
 		time_pending: mState.timerPerTurnInSeconds,
+
+		attacker:     attacker,
+		attackerSign: SIGN_ROCK,
 	}
 
 	return &attackState
@@ -160,4 +188,62 @@ func (mState *MatchState) DispatchMessage(opcode int64, encodedMessage string, c
 	if err != nil {
 		PrintError(logger, err, "Error dispatching message")
 	}
+}
+
+func (m *MatchState) ProcessMatchTimers(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) {
+
+	m.tick += 1
+
+	// if m.gameState == GAME_STATE_IN_PROGRESS {
+	// 	m.tickCounter -= 1
+	// }
+}
+
+func (m *MatchState) ProcessFutureActions(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) {
+
+	for i := 0; i < len(*(m.futureActions)); i++ {
+		action := (*m.futureActions)[i]
+
+		if action.followGameState && m.gameState != GAME_STATE_IN_PROGRESS {
+			continue
+		}
+
+		action.timerInTicks -= 1
+		//logger.Info("Future Action update : (%v) countdown : (%v)", action.name, action.timerInTicks)
+
+		if action.timerInTicks <= 0 {
+			//Processing action if timer < 0;
+			logger.Info("Future Action update Executing : (%v) ", action.name)
+			action.action(ctx, logger, db, nk, dispatcher, tick, state, messages)
+			m.futureActions.Dequeue()
+
+			//Modifying iterator since collection is modified during iteration.
+			i--
+		}
+	}
+}
+
+func (mState *MatchState) GetPlayerOfCurrentTurn() *Player {
+
+	if val, ok := mState.players[mState.turnCounter]; ok {
+		return val
+	}
+
+	fmt.Println("ERROR : Invalid turn player requested")
+	return nil
+}
+
+func (m *MatchState) ChangeTurn() {
+
+	//TODO :: No of players to be decided dynamically.
+	var targetTurn = ((m.currentTurn) % (2)) + 1
+
+	m.previousTurn = m.currentTurn
+	m.currentTurn = targetTurn
+
+	OnChangeTurn(m.currentTurn)
+}
+
+func OnChangeTurn(currentTurn int) {
+	fmt.Println("Turn changed : ", currentTurn)
 }

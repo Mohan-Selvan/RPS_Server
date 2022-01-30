@@ -14,9 +14,9 @@ type InitMatchMessage struct {
 func (o InitMatchMessage) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(map[string]interface{}{
-		"players":              o.players.GetEncodedObject(),
-		"att_sta":              o.attackState.GetEncodedObject(),
-		"time_per_turn_in_sec": IntToString(o.timePerTurnInSeconds),
+		"players":              o.players,
+		"att_sta":              o.attackState,
+		"time_per_turn_in_sec": (o.timePerTurnInSeconds),
 	})
 }
 

@@ -33,8 +33,20 @@ func InitializeMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 
 	logger.Info("Initialize Match called, Starting match!")
 
+	//Initializing Player for all presences in match.
 	for _, value := range mState.presences {
 		player, err := InitPlayer(value.GetUserId(), ctx, logger, db, nk, dispatcher, tick, state)
+		if err != nil {
+			PrintError(logger, err, "Error initializing player")
+		}
+
+		mState.players.AddPlayer(player)
+	}
+
+	//initializing AI for remaining required players
+	for _, value := range AI_ACCOUNTS {
+
+		player, err := InitPlayer(value, ctx, logger, db, nk, dispatcher, tick, state)
 		if err != nil {
 			PrintError(logger, err, "Error initializing player")
 		}
@@ -46,12 +58,28 @@ func InitializeMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 		logger.Info("Player in match : %s", player.userID)
 	}
 
-	mState.currentAttackState = mState.NewAttackStateObject(ctx, logger, db, nk, dispatcher, tick, state)
+	//TODO :: Target implementation pending.
+	//Setting target circularly.
+	lastKey := -1
+	for key, val := range mState.players {
+
+		if lastKey >= 0 {
+			val.target = mState.players[lastKey]
+		}
+
+		lastKey = key
+	}
+
+	//Initial turn goes to 1st Player.
+	mState.turnCounter = 1
+
+	mState.currentAttackState = mState.NewAttackStateObject(mState.GetPlayerOfCurrentTurn(), ctx, logger, db, nk, dispatcher, tick, state)
 	mState.lastAttackState = *mState.currentAttackState
 
 	encodedMessage := InitMatchMessage{
-		players:     mState.players,
-		attackState: mState.currentAttackState,
+		players:              mState.players,
+		attackState:          mState.currentAttackState,
+		timePerTurnInSeconds: TIME_PER_TURN,
 	}.GetEncodedObject()
 
 	mState.DispatchMessage(s2c_InitMatch, encodedMessage, ctx, logger, db, nk, dispatcher, tick, state)

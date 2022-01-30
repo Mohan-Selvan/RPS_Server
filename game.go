@@ -13,9 +13,12 @@ func HandleGameState_INPROGRESS(ctx context.Context, logger runtime.Logger, db *
 
 	for _, message := range messages {
 
+		data := string(message.GetData())
+
 		switch message.GetOpCode() {
 		case c2s_PlayerMove:
-			mState.HandlePlayerMove(message.GetUserId(), ctx, logger, db, nk, dispatcher, tick, state, messages)
+			sign := *SIGNS.GetSign(StringToInt(data))
+			mState.HandlePlayerMove(message.GetUserId(), sign, ctx, logger, db, nk, dispatcher, tick, state, messages)
 			break
 
 		default:
@@ -25,11 +28,21 @@ func HandleGameState_INPROGRESS(ctx context.Context, logger runtime.Logger, db *
 	}
 }
 
-func (mState *MatchState) HandlePlayerMove(userID string, ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) {
+func (mState *MatchState) HandlePlayerMove(userID string, sign Sign, ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) {
 
 	//Update Player selection here.
-	logger.Info("Player move made here by %v", userID)
+	logger.Info("Player move made here by %v (%v)", userID, sign)
 
+	target := mState.players.GetPlayer(userID).target
+
+	target.ModifyHealth(-sign.damage)
+
+	mState.DispatchMessage(s2c_PlayerMove, mState.currentAttackState.GetEncodedObject(), ctx, logger, db, nk, dispatcher, tick, state)
+
+	mState.ChangeTurn()
+
+	mState.lastAttackState = *mState.currentAttackState
+	mState.currentAttackState = mState.NewAttackStateObject(mState.GetPlayerOfCurrentTurn(), ctx, logger, db, nk, dispatcher, tick, state)
 }
 
 func (mState *MatchState) ProcessAttack(userID string, ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) {
@@ -38,5 +51,5 @@ func (mState *MatchState) ProcessAttack(userID string, ctx context.Context, logg
 
 	//Claculate Attack State.
 	mState.lastAttackState = *mState.currentAttackState
-	mState.currentAttackState = mState.NewAttackStateObject(ctx, logger, db, nk, dispatcher, tick, state)
+	mState.currentAttackState = mState.NewAttackStateObject(mState.GetPlayerOfCurrentTurn(), ctx, logger, db, nk, dispatcher, tick, state)
 }

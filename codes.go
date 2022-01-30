@@ -18,7 +18,8 @@ var (
 )
 
 var (
-	s2c_InitMatch int64 = 1
+	s2c_InitMatch  int64 = 1
+	s2c_PlayerMove int64 = 2
 )
 
 type GameState int

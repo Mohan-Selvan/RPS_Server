@@ -143,14 +143,16 @@ type Player struct {
 
 	currentHealth int
 	maxHealth     int
+
+	target *Player
 }
 
 func (o *Player) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(map[string]interface{}{
 		"user_id": o.userID,
-		"curr_hp": IntToString(o.currentHealth),
-		"max_hp":  IntToString(o.maxHealth),
+		"curr_hp": (o.currentHealth),
+		"max_hp":  (o.maxHealth),
 	})
 }
 
@@ -161,6 +163,10 @@ func (o *Player) GetEncodedObject() string {
 		fmt.Println("Error encoding Player")
 	}
 	return string(encoded)
+}
+
+func (p *Player) ModifyHealth(amount int) {
+	p.currentHealth = Helpers.ClampInt(p.currentHealth+amount, 0, p.maxHealth)
 }
 
 //#endregion
