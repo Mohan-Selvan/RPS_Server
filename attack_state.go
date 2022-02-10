@@ -6,18 +6,18 @@ import (
 )
 
 type AttackState struct {
+	players      PlayersMap
 	time_pending int
 
-	attacker     *Player
-	attackerSign Sign
+	matchEndMessage []MatchEndMessage
 }
 
 func (o *AttackState) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(map[string]interface{}{
-		"time_pen": (o.time_pending),
-		"att":      o.attacker.userID,
-		"att_sign": o.attackerSign,
+		"players":   (o.players),
+		"time_pen":  (o.time_pending),
+		"match_end": (o.matchEndMessage),
 	})
 }
 

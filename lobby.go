@@ -31,11 +31,15 @@ func HandlePlayerReady(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 func InitializeMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}) {
 	mState, _ := state.(*MatchState)
 
-	logger.Info("Initialize Match called, Starting match!")
+	logger.Info("Initializing match..")
 
 	//Initializing Player for all presences in match.
+
 	for _, value := range mState.presences {
-		player, err := InitPlayer(value.GetUserId(), ctx, logger, db, nk, dispatcher, tick, state)
+
+		isAi := false
+
+		player, err := InitPlayer(value.GetUserId(), isAi, ctx, logger, db, nk, dispatcher, tick, state)
 		if err != nil {
 			PrintError(logger, err, "Error initializing player")
 		}
@@ -45,8 +49,8 @@ func InitializeMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 
 	//initializing AI for remaining required players
 	for _, value := range AI_ACCOUNTS {
-
-		player, err := InitPlayer(value, ctx, logger, db, nk, dispatcher, tick, state)
+		isAi := true
+		player, err := InitPlayer(value, isAi, ctx, logger, db, nk, dispatcher, tick, state)
 		if err != nil {
 			PrintError(logger, err, "Error initializing player")
 		}
@@ -54,30 +58,32 @@ func InitializeMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 		mState.players.AddPlayer(player)
 	}
 
-	for _, player := range mState.players {
-		logger.Info("Player in match : %s", player.userID)
+	//Assigning Player ID here.
+	for playerID, player := range mState.players {
+		player.playerID = playerID
+
+		logger.Info("Player in match (Id : %v) : %s", player.playerID, player.userID)
 	}
 
 	//TODO :: Target implementation pending.
 	//Setting target circularly.
-	lastKey := -1
+	previousKey := -1
 	for key, val := range mState.players {
 
-		if lastKey >= 0 {
-			val.target = mState.players[lastKey]
+		if previousKey >= 0 {
+			val.target = mState.players[previousKey]
 		}
 
-		lastKey = key
+		previousKey = key
 	}
+	mState.players[1].target = mState.players[len(mState.players)]
 
 	//Initial turn goes to 1st Player.
-	mState.turnCounter = 1
 
-	mState.currentAttackState = mState.NewAttackStateObject(mState.GetPlayerOfCurrentTurn(), ctx, logger, db, nk, dispatcher, tick, state)
+	mState.currentAttackState = mState.NewAttackStateObject(ctx, logger, db, nk, dispatcher, tick, state)
 	mState.lastAttackState = *mState.currentAttackState
 
 	encodedMessage := InitMatchMessage{
-		players:              mState.players,
 		attackState:          mState.currentAttackState,
 		timePerTurnInSeconds: TIME_PER_TURN,
 	}.GetEncodedObject()
@@ -87,10 +93,23 @@ func InitializeMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 	mState.ChangeGameState(GAME_STATE_IN_PROGRESS, logger)
 }
 
-func InitPlayer(userID string, ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}) (*Player, error) {
+//Initializes Player with default values.
+//NOTE :: PlayerID assigned here is a placeholder.
+func InitPlayer(userID string, isAI bool, ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}) (*Player, error) {
+
+	playerAccount, err := nk.AccountGetId(ctx, userID)
+	if err != nil {
+		PrintError(logger, err, "Error fetching account")
+	}
 
 	player := Player{
-		userID:        userID,
+		playerID: 0,
+		userID:   userID,
+
+		account: playerAccount,
+
+		isAI: isAI,
+
 		currentHealth: 100,
 		maxHealth:     100,
 	}

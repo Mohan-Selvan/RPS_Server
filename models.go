@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/heroiclabs/nakama-common/api"
 )
 
 //#region Response
@@ -139,20 +141,31 @@ func (f Floats2) GetAddedValue() float64 {
 //#region Player
 
 type Player struct {
-	userID string
+	playerID int
+	userID   string
+
+	account *api.Account
+
+	isAI bool
 
 	currentHealth int
 	maxHealth     int
 
-	target *Player
+	target                     *Player
+	hasSelectedMoveForThisTurn bool
+	selectedSign               Sign
 }
 
 func (o *Player) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(map[string]interface{}{
-		"user_id": o.userID,
-		"curr_hp": (o.currentHealth),
-		"max_hp":  (o.maxHealth),
+		"player_id":    (o.playerID),
+		"user_id":      (o.userID),
+		"is_ai":        (o.isAI),
+		"curr_hp":      (o.currentHealth),
+		"max_hp":       (o.maxHealth),
+		"has_selected": (o.hasSelectedMoveForThisTurn),
+		"sign_id":      (o.selectedSign.id),
 	})
 }
 
@@ -167,6 +180,37 @@ func (o *Player) GetEncodedObject() string {
 
 func (p *Player) ModifyHealth(amount int) {
 	p.currentHealth = Helpers.ClampInt(p.currentHealth+amount, 0, p.maxHealth)
+}
+
+func (p *Player) IsDead() bool {
+	return p.currentHealth <= 0
+}
+
+//#endregion
+
+//#region
+
+type MatchEndMessage struct {
+	matchEndState  MatchEndState
+	winning_player *Player
+	endTime        int64
+}
+
+func (o *MatchEndMessage) MarshalJSON() ([]byte, error) {
+
+	return json.Marshal(map[string]interface{}{
+		"match_end_state": o.matchEndState,
+		"winner":          o.winning_player,
+	})
+}
+
+func (o *MatchEndMessage) GetEncodedObject() string {
+	encoded, err := json.Marshal(o)
+
+	if err != nil {
+		fmt.Println("Error encoding MatchEndMessage")
+	}
+	return string(encoded)
 }
 
 //#endregion

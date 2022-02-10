@@ -29,3 +29,10 @@ var (
 	GAME_STATE_IN_PROGRESS GameState = 2
 	GAME_STATE_END         GameState = 3
 )
+
+type MatchEndState int
+
+var (
+	MATCH_END_STATE_WIN  MatchEndState = 1
+	MATCH_END_STATE_DRAW MatchEndState = 2
+)

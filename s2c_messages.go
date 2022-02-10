@@ -6,7 +6,6 @@ import (
 )
 
 type InitMatchMessage struct {
-	players              PlayersMap
 	attackState          *AttackState
 	timePerTurnInSeconds int
 }
@@ -14,7 +13,6 @@ type InitMatchMessage struct {
 func (o InitMatchMessage) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(map[string]interface{}{
-		"players":              o.players,
 		"att_sta":              o.attackState,
 		"time_per_turn_in_sec": (o.timePerTurnInSeconds),
 	})

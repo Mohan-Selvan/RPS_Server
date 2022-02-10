@@ -27,9 +27,9 @@ func (o *Sign) GetEncodedObject() string {
 	return string(encoded)
 }
 
-type SignsMap map[int]*Sign
+type SignsMap map[int]Sign
 
-func (s *SignsMap) GetSign(signID int) *Sign {
+func (s *SignsMap) GetSign(signID int) Sign {
 	if val, ok := (*s)[signID]; ok {
 		return val
 	}
@@ -38,11 +38,17 @@ func (s *SignsMap) GetSign(signID int) *Sign {
 	return SIGNS.GetSign(SIGN_ID_EMPTY)
 }
 
+func (s *SignsMap) GetRandomSign() Sign {
+
+	randomSignID := Helpers.GetRandomInt(1, len(SIGNS))
+	return SIGNS.GetSign(randomSignID)
+}
+
 var SIGNS SignsMap = SignsMap{
-	SIGN_ID_EMPTY:   &SIGN_EMPTY,
-	SIGN_ID_ROCK:    &SIGN_ROCK,
-	SIGN_ID_PAPER:   &SIGN_PAPER,
-	SIGN_ID_SCISSOR: &SIGN_SCISSOR,
+	SIGN_ID_EMPTY:   SIGN_EMPTY,
+	SIGN_ID_ROCK:    SIGN_ROCK,
+	SIGN_ID_PAPER:   SIGN_PAPER,
+	SIGN_ID_SCISSOR: SIGN_SCISSOR,
 }
 
 const SIGN_ID_EMPTY int = 0

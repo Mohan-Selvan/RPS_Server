@@ -39,11 +39,9 @@ type MatchState struct {
 	futureActions *FutureActions
 
 	tick                  int
-	turnCounter           int
 	timerPerTurnInSeconds int
 
-	currentTurn  int
-	previousTurn int
+	moveCounter int
 
 	matchStartTime int64
 
@@ -69,11 +67,13 @@ func (m *Match) MatchInit(ctx context.Context, logger runtime.Logger, db *sql.DB
 
 		futureActions: &FutureActions{},
 
+		moveCounter:           1,
 		timerPerTurnInSeconds: TIME_PER_TURN,
-		turnCounter:           1,
 	}
 
-	tickRate := 1
+	state.ChangeGameState(GAME_STATE_LOBBY, logger)
+
+	tickRate := TICK_RATE
 	label := m.moduleName
 	return state, tickRate, label
 }
@@ -94,7 +94,7 @@ func (m *Match) MatchJoin(ctx context.Context, logger runtime.Logger, db *sql.DB
 		mState.presences[p.GetUserId()] = p
 	}
 
-	if len(presences) == MAX_NUMBER_OF_PLAYERS {
+	if len(presences) == NUMBER_OF_PLAYERS_REQUIRED_TO_START {
 		InitializeMatch(ctx, logger, db, nk, dispatcher, tick, state)
 	}
 
@@ -104,10 +104,17 @@ func (m *Match) MatchJoin(ctx context.Context, logger runtime.Logger, db *sql.DB
 func (m *Match) MatchLeave(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presences []runtime.Presence) interface{} {
 	mState, _ := state.(*MatchState)
 
+	//If last player left (no one is present in match), Terminate match.
+	if len(presences) <= 1 {
+		logger.Info("Last player left, Terminating Match..")
+		mState.TerminateMatch(logger)
+	}
+
 	//Removing player from presences.
 	for _, p := range presences {
 		delete(mState.presences, p.GetUserId())
 	}
+
 	return mState
 }
 
@@ -166,16 +173,22 @@ func (m *MatchState) AddFutureAction(f *FutureAction) {
 	m.futureActions.Enqueue(f)
 }
 
-func (mState *MatchState) NewAttackStateObject(attacker *Player, ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}) *AttackState {
+func (mState *MatchState) NewAttackStateObject(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}) *AttackState {
 
 	logger.Info("Initializing New AttackState")
 
 	attackState := AttackState{
+		players:      mState.players,
 		time_pending: mState.timerPerTurnInSeconds,
 
-		attacker:     attacker,
-		attackerSign: SIGN_ROCK,
+		matchEndMessage: make([]MatchEndMessage, 0),
 	}
+
+	for _, p := range mState.players.GetNonDeadPlayers() {
+		p.hasSelectedMoveForThisTurn = false
+	}
+
+	mState.ProcessAIMove(ctx, logger, db, nk, dispatcher, tick, state)
 
 	return &attackState
 }
@@ -209,7 +222,7 @@ func (m *MatchState) ProcessFutureActions(ctx context.Context, logger runtime.Lo
 		}
 
 		action.timerInTicks -= 1
-		//logger.Info("Future Action update : (%v) countdown : (%v)", action.name, action.timerInTicks)
+		logger.Info("Future Action update : (%v) countdown : (%v)", action.name, action.timerInTicks)
 
 		if action.timerInTicks <= 0 {
 			//Processing action if timer < 0;
@@ -223,27 +236,53 @@ func (m *MatchState) ProcessFutureActions(ctx context.Context, logger runtime.Lo
 	}
 }
 
-func (mState *MatchState) GetPlayerOfCurrentTurn() *Player {
-
-	if val, ok := mState.players[mState.turnCounter]; ok {
-		return val
-	}
-
-	fmt.Println("ERROR : Invalid turn player requested")
-	return nil
-}
-
-func (m *MatchState) ChangeTurn() {
-
-	//TODO :: No of players to be decided dynamically.
-	var targetTurn = ((m.currentTurn) % (2)) + 1
-
-	m.previousTurn = m.currentTurn
-	m.currentTurn = targetTurn
-
-	OnChangeTurn(m.currentTurn)
-}
-
 func OnChangeTurn(currentTurn int) {
 	fmt.Println("Turn changed : ", currentTurn)
+}
+
+func (mState *MatchState) CheckMatchEnd(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) {
+
+	var noOfPlayersAlive int = mState.players.GetNoOfPlayersAlive()
+	if noOfPlayersAlive > 1 {
+		return
+	}
+
+	mState.ProcessMatchEnd(ctx, logger, db, nk, dispatcher, tick, state, messages)
+}
+
+func (mState *MatchState) ProcessMatchEnd(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, messages []runtime.MatchData) {
+
+	logger.Info("Processing Match End.")
+
+	var noOfPlayersAlive int = mState.players.GetNoOfPlayersAlive()
+
+	//Checking for all match end cases
+	if noOfPlayersAlive == 1 {
+		//When a player has won..
+		//When only one player is alive.
+
+		winningPlayer := mState.players.GetNonDeadPlayers()[0]
+
+		matchEndMessage := MatchEndMessage{
+			matchEndState:  MATCH_END_STATE_WIN,
+			winning_player: winningPlayer,
+		}
+
+		mState.currentAttackState.matchEndMessage = append(mState.currentAttackState.matchEndMessage, matchEndMessage)
+
+	} else if noOfPlayersAlive <= 0 {
+		//When all players are dead.
+		//In case a match draws.
+
+		matchEndMessage := MatchEndMessage{
+			matchEndState:  MATCH_END_STATE_DRAW,
+			winning_player: nil,
+		}
+
+		mState.currentAttackState.matchEndMessage = append(mState.currentAttackState.matchEndMessage, matchEndMessage)
+
+	} else {
+		logger.Error("ERROR :: Invalid condition reached!")
+		return
+	}
 }
