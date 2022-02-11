@@ -1,6 +1,0 @@
-DAMAGE_OUTPUT (Attacker signs in Rows / Defender signs in columns),,Defender Sign,,,
-,,SIGN_EMPTY,SIGN_ROCK,SIGN_PAPER,SIGN_SCISSOR
-Attacker Sign,SIGN_EMPTY,0,0,0,0
-,SIGN_ROCK,0,0,0,1
-,SIGN_PAPER,0,1,0,0
-,SIGN_SCISSOR,0,0,1,0

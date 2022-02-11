@@ -11,6 +11,8 @@ import (
 func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, initializer runtime.Initializer) error {
 	logger.Info("Initializing Init..")
 
+	InitializeSignTable(ctx, logger)
+
 	fmt.Println("Registering match_handler")
 
 	if err := initializer.RegisterMatch(MATCH_MODULE_FATAL_FOUR, NewMatch_FatalFour); err != nil {

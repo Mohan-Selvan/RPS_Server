@@ -80,11 +80,12 @@ func (mState *MatchState) ExecuteTurn(ctx context.Context, logger runtime.Logger
 		for _, o := range mState.players.GetNonDeadPlayersExcept(p.userID) {
 			oSign := o.selectedSign
 
-			resultantDamage := pSign.damage - oSign.defense
+			multiplier := SIGN_TABLE[pSign.id][oSign.id]
+			resultantDamage := (pSign.damage * int(multiplier))
 
 			if resultantDamage > 0 {
 				//When damage is still valid.
-				o.ModifyHealth(resultantDamage)
+				o.ModifyHealth(-resultantDamage)
 
 			} else if resultantDamage < 0 {
 				//When deflected.
