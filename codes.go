@@ -5,7 +5,10 @@ import "github.com/heroiclabs/nakama-common/runtime"
 const MAX_PLAYER_PVA int = 4
 
 var (
-	errUnknownError error = runtime.NewError("Unknown error", 500)
+	errUnknownError  error = runtime.NewError("Unknown error", 500)
+	errAccountFetch  error = runtime.NewError("Account not found", 501)
+	errAccountUpdate error = runtime.NewError("Account update error", 502)
+	errInvalidData   error = runtime.NewError("Invalid request", 503)
 )
 
 //Lobby State OpCodes
@@ -35,4 +38,11 @@ type MatchEndState int
 var (
 	MATCH_END_STATE_WIN  MatchEndState = 1
 	MATCH_END_STATE_DRAW MatchEndState = 2
+)
+
+type AccountState int
+
+var (
+	ACCOUNT_STATE_COMPLETE   AccountState = 0
+	ACCOUNT_STATE_INCOMPLETE AccountState = 1
 )

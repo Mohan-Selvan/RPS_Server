@@ -7,6 +7,7 @@ import (
 
 type Sign struct {
 	id      int
+	name    string
 	damage  int
 	defense int
 }
@@ -25,6 +26,10 @@ func (o *Sign) GetEncodedObject() string {
 		fmt.Println("Error encoding Sign")
 	}
 	return string(encoded)
+}
+
+func (o Sign) ToString() string {
+	return fmt.Sprintf("%+v", o)
 }
 
 type SignsMap map[int]Sign
@@ -55,6 +60,7 @@ const SIGN_ID_EMPTY int = 0
 
 var SIGN_EMPTY Sign = Sign{
 	id:      SIGN_ID_EMPTY,
+	name:    "Empty",
 	damage:  0,
 	defense: 0,
 }
@@ -63,6 +69,7 @@ const SIGN_ID_ROCK int = 1
 
 var SIGN_ROCK Sign = Sign{
 	id:      SIGN_ID_ROCK,
+	name:    "Rock",
 	damage:  5,
 	defense: 5,
 }
@@ -71,6 +78,7 @@ const SIGN_ID_PAPER int = 2
 
 var SIGN_PAPER Sign = Sign{
 	id:      SIGN_ID_PAPER,
+	name:    "Paper",
 	damage:  5,
 	defense: 5,
 }
@@ -79,6 +87,7 @@ const SIGN_ID_SCISSOR int = 3
 
 var SIGN_SCISSOR Sign = Sign{
 	id:      SIGN_ID_SCISSOR,
+	name:    "Scissor",
 	damage:  5,
 	defense: 5,
 }

@@ -7,7 +7,17 @@ import (
 	"strings"
 
 	"github.com/heroiclabs/nakama-common/api"
+	"github.com/heroiclabs/nakama-common/runtime"
 )
+
+//#region DecodersType
+
+type DecoderFunctions struct {
+}
+
+var Decoders DecoderFunctions
+
+//#endregion
 
 //#region Response
 
@@ -188,7 +198,7 @@ func (p *Player) IsDead() bool {
 
 //#endregion
 
-//#region
+//#region MatchEndMessage
 
 type MatchEndMessage struct {
 	matchEndState  MatchEndState
@@ -211,6 +221,119 @@ func (o *MatchEndMessage) GetEncodedObject() string {
 		fmt.Println("Error encoding MatchEndMessage")
 	}
 	return string(encoded)
+}
+
+//#endregion
+
+//#region Metadata
+
+type Metadata struct {
+	accountState AccountState
+	skinID       int
+}
+
+func (o *Metadata) ToMap() map[string]interface{} {
+	return map[string]interface{}{
+		"state":   o.accountState,
+		"skin_id": o.skinID,
+	}
+}
+
+func (o *Metadata) MarshalJSON() ([]byte, error) {
+
+	return json.Marshal(o.ToMap())
+}
+
+func (m *Metadata) UnmarshalJSON(data []byte) error {
+
+	var v map[string]interface{}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+
+	m.accountState = AccountState(int(v["state"].(float64)))
+	m.skinID = int(v["skin_id"].(float64))
+
+	return nil
+}
+
+func (d *DecoderFunctions) ParseMetadata(s string) Metadata {
+
+	var metadata Metadata
+
+	e := json.Unmarshal([]byte(s), &metadata)
+
+	if e != nil {
+		fmt.Printf("Error Unmarshalling Metadata : %v, Error : %v", s, e)
+	}
+
+	return metadata
+}
+
+func (o *Metadata) GetEncodedObject() string {
+	encoded, err := json.Marshal(o)
+
+	if err != nil {
+		fmt.Println("Error encoding Metadata")
+	}
+	return string(encoded)
+}
+
+type Skin struct {
+	skinID int
+}
+
+func (o *Skin) MarshalJSON() ([]byte, error) {
+
+	return json.Marshal(map[string]interface{}{
+		"id": o.skinID,
+	})
+}
+
+func (o *Skin) GetEncodedObject() string {
+	encoded, err := json.Marshal(o)
+
+	if err != nil {
+		fmt.Println("Error encoding Skin")
+	}
+	return string(encoded)
+}
+
+//#endregion
+
+//#region Payload_EncodersDecoders
+
+type PayloadMap map[string]interface{}
+
+func GetDecodedObject(payload string, logger runtime.Logger) PayloadMap {
+
+	response := make(PayloadMap)
+
+	e := json.Unmarshal([]byte(payload), &response)
+
+	if e != nil {
+		logger.Error("Error UnMarshalling Payload : %v, Error : %v", payload, e)
+	}
+
+	return response
+}
+
+func (p *PayloadMap) Contains(key string) bool {
+	if _, ok := (*p)[key]; ok {
+		return true
+	}
+	return false
+}
+
+func (p *PayloadMap) ContainsAll(keys ...string) bool {
+
+	for _, key := range keys {
+		if _, ok := (*p)[key]; !ok {
+			return false
+		}
+	}
+
+	return true
 }
 
 //#endregion
